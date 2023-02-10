@@ -23,11 +23,9 @@ record_model_arch = False
 
 parser_choices = {
     'dataset': ['gtsrb','cifar10', 'cifar100', 'imagenette'],
-    'poison_type': ['badnet', 'blend', 'dynamic', 'clean_label', 'TaCT', 'SIG',
-                    'adaptive', 'adaptive_blend', 'adaptive_k_way', 'adaptive_k',
-                    'none', 'universal'],
-    'poison_rate': [0, 0.002, 0.004, 0.005, 0.008, 0.01, 0.015, 0.02, 0.05, 0.1],
-    'cover_rate': [0, 0.001, 0.005, 0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.1],
+    'poison_type': ['badnet', 'blend', 'adaptive_blend', 'adaptive_patch', 'adaptive_k_way', 'none'],
+    'poison_rate': [i / 1000.0 for i in range(0, 500)],
+    'cover_rate': [i / 1000.0 for i in range(0, 500)],
 }
 
 parser_default = {
@@ -39,19 +37,12 @@ parser_default = {
 }
 
 trigger_default = {
-    'adaptive': 'hellokitty_32.png',
     'adaptive_blend': 'hellokitty_32.png',
     'adaptive_k_way': 'none',
-    'adaptive_k': 'none',
-    'clean_label' : 'badnet_patch4_dup_32.png',
+    'adaptive_patch': 'none',
     'badnet' : 'badnet_patch.png',
     'blend' : 'hellokitty_32.png',
-    'TaCT' : 'trojan_square_32.png',
-    'sleeper_agent': 'trigger_sleeper_agent.png',
-    'SIG' : 'none',
-    'dynamic' : 'none',
     'none' : 'none',
-    'universal': 'universal.png'
 }
 
 arch = {
@@ -60,6 +51,59 @@ arch = {
     # 'cifar10': mobilenetv2.mobilenetv2,
     'gtsrb' : resnet.resnet20,
     'abl':  wresnet.WideResNet
+}
+
+# adapitve-patch triggers for different datasets
+adaptive_patch_train_trigger_names = {
+    'cifar10': [
+        'phoenix_corner_32.png',
+        'firefox_corner_32.png',
+        'badnet_patch4_32.png',
+        'trojan_square_32.png',
+    ],
+    'gtsrb': [
+        'phoenix_corner_32.png',
+        'firefox_corner_32.png',
+        'badnet_patch4_32.png',
+        'trojan_square_32.png',
+    ],
+}
+
+adaptive_patch_train_trigger_alphas = {
+    'cifar10': [
+        0.5,
+        0.2,
+        0.5,
+        0.3,
+    ],
+    'gtsrb': [
+        0.5,
+        0.2,
+        0.5,
+        0.3,
+    ],
+}
+
+adaptive_patch_test_trigger_names = {
+    'cifar10': [
+        'phoenix_corner2_32.png',
+        'badnet_patch4_32.png',
+    ],
+    'gtsrb': [
+        'firefox_corner_32.png',
+        'trojan_square_32.png',
+    ],
+}
+
+adaptive_patch_test_trigger_alphas = {
+    'cifar10': [
+        1,
+        1,
+    ],
+    'gtsrb': [
+        1,
+        1,
+    ],
 }
 
 

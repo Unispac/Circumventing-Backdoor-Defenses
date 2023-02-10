@@ -2,6 +2,7 @@ import torch
 from other_defenses import NC, STRIP, FP, ABL
 import argparse, config, os, sys
 from utils import supervisor, tools
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-dataset', type=str, required=False,
@@ -39,22 +40,29 @@ if args.trigger is None:
 tools.setup_seed(args.seed)
 os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % args.devices
 if args.log:
-    out_path = 'other_defenses/logs'
+    # out_path = 'other_defenses_tool_box/logs'
     # if not os.path.exists(out_path): os.mkdir(out_path)
     # out_path = os.path.join(out_path, '%s_seed=%s' % (args.dataset, args.seed))
     # if not os.path.exists(out_path): os.mkdir(out_path)
-    # out_path = os.path.join(out_path, 'other_defenses')
-    # if not os.path.exists(out_path): os.mkdir(out_path)
-    if args.defense == 'ABL':
-        out_path = os.path.join(out_path, '%s_%s_seed=%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=False, include_poison_seed=config.record_poison_seed), args.seed))
-        # out_path = os.path.join(out_path, '%s_%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=False, include_poison_seed=config.record_poison_seed)))
-    else:
-        out_path = os.path.join(out_path, '%s_%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=True, include_poison_seed=config.record_poison_seed)))
+    # if args.defense == 'ABL':
+    #     out_path = os.path.join(out_path, '%s_%s_seed=%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=False, include_poison_seed=config.record_poison_seed), args.seed))
+    #     # out_path = os.path.join(out_path, '%s_%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=False, include_poison_seed=config.record_poison_seed)))
+    # else:
+    #     out_path = os.path.join(out_path, '%s_%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=True, include_poison_seed=config.record_poison_seed)))
+    out_path = 'logs'
+    if not os.path.exists(out_path): os.mkdir(out_path)
+    out_path = os.path.join(out_path, '%s_seed=%s' % (args.dataset, args.seed))
+    if not os.path.exists(out_path): os.mkdir(out_path)
+    out_path = os.path.join(out_path, 'other_defense')
+    if not os.path.exists(out_path): os.mkdir(out_path)
+    out_path = os.path.join(out_path, '%s_%s.out' % (args.defense, supervisor.get_dir_core(args, include_model_name=True, include_poison_seed=config.record_poison_seed)))
+    # fout = open(out_path, 'w')
     fout = open(out_path, 'w')
     ferr = open('/dev/null', 'a')
     sys.stdout = fout
     sys.stderr = ferr
 
+start_time = time.perf_counter()
 
 if args.defense == 'NC':
     defense = NC(
@@ -76,26 +84,70 @@ elif args.defense == 'STRIP':
         )
     defense.detect()
 elif args.defense == 'FP':
-    defense = FP(
-        args,
-        prune_ratio=0.8,
-        finetune_epoch=20,
-        max_allowed_acc_drop=0.1,
-    )
+    if args.dataset == 'cifar10':
+        defense = FP(
+            args,
+            prune_ratio=0.99,
+            finetune_epoch=100,
+            max_allowed_acc_drop=0.1,
+        )
+    elif args.dataset == 'gtsrb':
+        defense = FP(
+            args,
+            prune_ratio=0.75,
+            finetune_epoch=100,
+            max_allowed_acc_drop=0.1,
+        ) 
+    else: raise NotImplementedError()
     defense.detect()
 elif args.defense == 'ABL':
-    defense = ABL(
-        args,
-        isolation_epochs=20,
-        isolation_ratio=0.01,
-        gradient_ascent_type='Flooding',
-        gamma=0.5,
-        flooding=0.5,
-        do_isolate=True,
-        finetuning_ascent_model=True,
-        finetuning_epochs=60,
-        unlearning_epochs=5,
-        do_unlearn=True
-    )
-    defense.detect()
+    if args.dataset == 'cifar10':
+        defense = ABL(
+            args,
+            isolation_epochs=15,
+            isolation_ratio=0.001,
+            # gradient_ascent_type='LGA',
+            gradient_ascent_type='Flooding',
+            gamma=0.01,
+            flooding=0.3,
+            do_isolate=True,
+            finetuning_ascent_model=True,
+            finetuning_epochs=60,
+            unlearning_epochs=5,
+            lr_unlearning=2e-2,
+            do_unlearn=True,
+        )
+        defense.detect()
+    elif args.dataset == 'gtsrb':
+        defense = ABL(
+            args,
+            isolation_epochs=5,
+            isolation_ratio=0.005,
+            # gradient_ascent_type='LGA',
+            gradient_ascent_type='Flooding',
+            gamma=0.1,
+            flooding=0.03,
+            do_isolate=True,
+            finetuning_ascent_model=True,
+            finetuning_epochs=10,
+            
+            # # For 0.001 isolation rate
+            # unlearning_epochs=10,
+            # lr_unlearning=1e-3,
+            # do_unlearn=True,
+            
+            # For 0.003 isolation rate
+            unlearning_epochs=5,
+            lr_unlearning=5e-4,
+            do_unlearn=True,
+            
+            # # For 0.005 isolation rate
+            # unlearning_epochs=5,
+            # lr_unlearning=1e-3,
+            # do_unlearn=True,
+        )
+        defense.detect()
 else: raise NotImplementedError()
+
+end_time = time.perf_counter()
+print("Elapsed time: {:.2f}s".format(end_time - start_time))

@@ -26,7 +26,7 @@ class STRIP(BackdoorDefense):
         self.strip_alpha: float = strip_alpha
         self.N: int = N
         self.defense_fpr = defense_fpr
-        self.folder_path = 'other_defenses/results/STRIP'
+        self.folder_path = 'other_defenses_tool_box/results/STRIP'
         if not os.path.exists(self.folder_path):
             os.mkdir(self.folder_path)
         self.train_loader = generate_dataloader(dataset=self.dataset,

@@ -47,7 +47,7 @@ class NC(BackdoorDefense):
         self.early_stop_patience: float = self.patience * 2
 
         # My configuration
-        self.folder_path = 'other_defenses/results/NC'
+        self.folder_path = 'other_defenses_tool_box/results/NC'
         if not os.path.exists(self.folder_path):
             os.mkdir(self.folder_path)
         self.criterion = torch.nn.CrossEntropyLoss()
@@ -64,9 +64,9 @@ class NC(BackdoorDefense):
         print('loss anomaly indices: ', normalize_mad(loss_list))
 
         anomaly_indices = normalize_mad(mask_norms)
-        overlap = jaccard_idx(mask_list[self.target_class], self.trigger_mask,
-                                select_num=(self.trigger_mask > 0).int().sum())
-        print(f'Jaccard index: {overlap:.3f}')
+        # overlap = jaccard_idx(mask_list[self.target_class], self.trigger_mask,
+        #                         select_num=(self.trigger_mask > 0).int().sum())
+        # print(f'Jaccard index: {overlap:.3f}')
         
         # self.suspect_class = torch.argmin(mask_norms).item()
         suspect_classes = []
@@ -78,8 +78,8 @@ class NC(BackdoorDefense):
                 suspect_classes_anomaly_indices.append(anomaly_indices[i])
         print("Suspect Classes:", suspect_classes)
         if len(suspect_classes) > 0:
-            min_idx = torch.tensor(suspect_classes_anomaly_indices).argmin().item()
-            self.suspect_class = suspect_classes[min_idx]
+            max_idx = torch.tensor(suspect_classes_anomaly_indices).argmax().item()
+            self.suspect_class = suspect_classes[max_idx]
             print("Unlearning with reversed trigger from class %d" % self.suspect_class)
             self.unlearn()
 
@@ -95,9 +95,9 @@ class NC(BackdoorDefense):
             mark_list.append(mark)
             mask_list.append(mask)
             loss_list.append(loss)
-            overlap = jaccard_idx(mask, self.trigger_mask,
-                                    select_num=(self.trigger_mask > 0).int().sum())
-            print(f'Jaccard index: {overlap:.3f}')
+            # overlap = jaccard_idx(mask, self.trigger_mask,
+            #                         select_num=(self.trigger_mask > 0).int().sum())
+            # print(f'Jaccard index: {overlap:.3f}')
             np.savez(file_path, mark_list=[to_numpy(mark) for mark in mark_list],
                      mask_list=[to_numpy(mask) for mask in mask_list],
                      loss_list=loss_list)
@@ -119,6 +119,9 @@ class NC(BackdoorDefense):
         mark_list = torch.stack(mark_list)
         mask_list = torch.stack(mask_list)
         loss_list = torch.as_tensor(loss_list)
+        
+        # f = np.load(file_path)
+        # mark_list, mask_list, loss_list = torch.tensor(f['mark_list']), torch.tensor(f['mask_list']), torch.tensor(f['loss_list'])
         return mark_list, mask_list, loss_list
 
     def loss_fn(self, _input, _label, Y, mask, mark, label):
@@ -294,12 +297,20 @@ class NC(BackdoorDefense):
                 transforms.RandomCrop(32, 4),
                 transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
             ])
+            lr = 0.01
+        elif self.args.dataset == 'gtsrb':
+            full_train_set = datasets.GTSRB(os.path.join(config.data_dir, 'gtsrb'), split='train', download=True, transform=transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor()]))
+            data_transform_aug = transforms.Compose([
+                transforms.RandomRotation(15),
+                transforms.Normalize((0.3337, 0.3064, 0.3171), (0.2672, 0.2564, 0.2629))
+            ])
+            lr = 0.001
         else:
             raise NotImplementedError()
         train_data = DatasetCL(0.1, full_dataset=full_train_set, transform=data_transform_aug, poison_ratio=0.2, mark=mark, mask=mask)
         train_loader = DataLoader(train_data, batch_size=128, shuffle=True)        
         criterion = nn.CrossEntropyLoss().cuda()
-        optimizer = torch.optim.SGD(self.model.parameters(), 0.01, momentum=self.momentum, weight_decay=self.weight_decay)
+        optimizer = torch.optim.SGD(self.model.parameters(), lr, momentum=self.momentum, weight_decay=self.weight_decay)
 
         val_atk(self.args, self.model)
         
@@ -322,7 +333,6 @@ class NC(BackdoorDefense):
             train_acc = (torch.eq(preds, labels).int().sum()) / preds.shape[0]
             print('\n<Unlearning> Train Epoch: {} \tLoss: {:.6f}, Train Acc: {:.6f}, lr: {:.2f}'.format(epoch, loss.item(), train_acc, optimizer.param_groups[0]['lr']))
             val_atk(self.args, self.model)
-        # torch.save(model.module.state_dict(), supervisor.get_model_dir(args))
 
 class DatasetCL(Dataset):
     def __init__(self, ratio, full_dataset=None, transform=None, poison_ratio=0, mark=None, mask=None):

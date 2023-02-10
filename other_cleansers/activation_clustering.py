@@ -64,6 +64,8 @@ def cleanser(inspection_set, model, num_classes, args, clusters=2):
         threshold = 0.15
     elif args.dataset == 'gtsrb':
         threshold = 0.25
+    elif args.dataset == 'imagenette':
+        threshold = 0 # place holder, not used
     else:
         raise NotImplementedError('dataset %s is not supported' % args.datasets)
 
@@ -91,7 +93,8 @@ def cleanser(inspection_set, model, num_classes, args, clusters=2):
 
         score = silhouette_score(projected_feats, kmeans.labels_)
         print('[class-%d] silhouette_score = %f' % (target_class, score))
-        if score > threshold:# and len(outliers) < len(kmeans.labels_) * 0.35:
+        # if score > threshold:# and len(outliers) < len(kmeans.labels_) * 0.35:
+        if len(outliers) < len(kmeans.labels_) * 0.35: # if one of the two clusters is abnormally small
             print(f"Outlier Num in Class {target_class}:", len(outliers))
             suspicious_indices += outliers
 

@@ -90,19 +90,20 @@ def test(model, test_loader, poison_test = False, poison_transform=None, num_cla
                                     poison_correct+=1
 
                 poison_acc += poison_pred.eq((clean_target.view_as(poison_pred))).sum().item()
-
-
-    if poison_test:
-        print('ASR: %d/%d = %.6f' % (poison_correct, num_non_target_class, poison_correct / num_non_target_class))
-        print('Attack ACC: %d/%d = %.6f' % (poison_acc, tot, poison_acc/tot) )
     
     print('Clean ACC: {}/{} = {:.6f}, Loss: {}'.format(
             clean_correct, tot,
             clean_correct/tot, tot_loss/tot
     ))
+    if poison_test:
+        print('ASR: %d/%d = %.6f' % (poison_correct, num_non_target_class, poison_correct / num_non_target_class))
+        # print('Attack ACC: %d/%d = %.6f' % (poison_acc, tot, poison_acc/tot) )
     print('Class_Dist: ', class_dist)
     print("")
-    return  clean_correct/tot
+    
+    if poison_test:
+        return clean_correct/tot, poison_correct / num_non_target_class
+    return clean_correct/tot, None
 
 
 def setup_seed(seed):

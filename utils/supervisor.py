@@ -53,18 +53,16 @@ def get_model_dir(args, cleanse=False):
 def get_dir_core(args, include_model_name=False, include_poison_seed=False):
     ratio = '%.3f' % args.poison_rate
     # ratio = '%.1f' % (args.poison_rate * 100) + '%'
-    if args.poison_type == 'blend' or args.poison_type == 'basic' or args.poison_type == 'clean_label':
+    if args.poison_type == 'blend':
         blend_alpha = '%.3f' % args.alpha
         dir_core = '%s_%s_%s_alpha=%s_trigger=%s' % (args.dataset, args.poison_type, ratio, blend_alpha, args.trigger)
-    elif args.poison_type == 'adaptive' or args.poison_type == 'adaptive_blend' or args.poison_type == 'TaCT':
+    elif args.poison_type == 'adaptive_blend':
         blend_alpha = '%.3f' % args.alpha
         cover_rate = '%.3f' % args.cover_rate
         dir_core = '%s_%s_%s_alpha=%s_cover=%s_trigger=%s' % (args.dataset, args.poison_type, ratio, blend_alpha, cover_rate, args.trigger)
-    elif args.poison_type == 'adaptive_k_way' or args.poison_type == 'adaptive_k':
+    elif args.poison_type == 'adaptive_k_way' or args.poison_type == 'adaptive_patch' or args.poison_type == 'TaCT':
         cover_rate = '%.3f' % args.cover_rate
         dir_core = '%s_%s_%s_cover=%s' % (args.dataset, args.poison_type, ratio, cover_rate)
-    elif args.poison_type == 'adaptive_patch' or args.poison_type == 'adaptive_physical':
-        dir_core = '%s_%s_%s_trigger=%s' % (args.dataset, args.poison_type, ratio, args.trigger)
     else:
         dir_core = '%s_%s_%s' % (args.dataset, args.poison_type, ratio)
 
@@ -79,18 +77,16 @@ def get_dir_core(args, include_model_name=False, include_poison_seed=False):
 def get_poison_set_dir(args):
     ratio = '%.3f' % args.poison_rate
     # ratio = '%.1f' % (args.poison_rate * 100) + '%'
-    if args.poison_type == 'blend' or args.poison_type == 'basic' or args.poison_type == 'clean_label':
+    if args.poison_type == 'blend':
         blend_alpha = '%.3f' % args.alpha
         poison_set_dir = 'poisoned_train_set/%s/%s_%s_alpha=%s_trigger=%s' % (args.dataset, args.poison_type, ratio, blend_alpha, args.trigger)
-    elif args.poison_type == 'adaptive' or args.poison_type == 'adaptive_blend' or args.poison_type == 'TaCT':
+    elif args.poison_type == 'adaptive_blend':
         blend_alpha = '%.3f' % args.alpha
         cover_rate = '%.3f' % args.cover_rate
         poison_set_dir = 'poisoned_train_set/%s/%s_%s_alpha=%s_cover=%s_trigger=%s' % (args.dataset, args.poison_type, ratio, blend_alpha, cover_rate, args.trigger)
-    elif args.poison_type == 'adaptive_k_way' or args.poison_type == 'adaptive_k':
+    elif args.poison_type == 'adaptive_k_way' or args.poison_type == 'adaptive_patch' or args.poison_type == 'TaCT':
         cover_rate = '%.3f' % args.cover_rate
         poison_set_dir = 'poisoned_train_set/%s/%s_%s_cover=%s' % (args.dataset, args.poison_type, ratio, cover_rate)
-    elif args.poison_type == 'adaptive_patch' or args.poison_type == 'adaptive_physical':
-        poison_set_dir = 'poisoned_train_set/%s/%s_%s_trigger=%s' % (args.dataset, args.poison_type, ratio, args.trigger)
     else:
         poison_set_dir = 'poisoned_train_set/%s/%s_%s' % (args.dataset, args.poison_type, ratio)
     
@@ -137,9 +133,8 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
     trigger = None
     trigger_mask = None
 
-    if poison_type in ['badnet', 'blend', 'clean_label',
-                       'adaptive', 'adaptive_blend', 'adaptive_k', 'adaptive_k_way',
-                       'SIG', 'TaCT', 'sleeper_agent', 'none', 'universal']:
+    if poison_type in ['none', 'badnet', 'blend',
+                       'adaptive_blend', 'adaptive_patch', 'adaptive_k_way']:
 
         if trigger_transform is None:
             trigger_transform = transforms.Compose([
@@ -171,97 +166,24 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
             from poison_tool_box import blend
             poison_transform = blend.poison_transform(img_size=img_size, trigger=trigger,
                                                       target_class=target_class, alpha=alpha)
-
-        elif poison_type == 'clean_label':
-            from poison_tool_box import clean_label
-            poison_transform = clean_label.poison_transform(img_size=img_size, trigger_mark=trigger, trigger_mask=trigger_mask,
-                                                            target_class=target_class)
-
-        elif poison_type == 'adaptive':
-            from poison_tool_box import adaptive
-            poison_transform = adaptive.poison_transform(img_size=img_size, trigger_mark=trigger, trigger_mask=trigger_mask,
-                                                         target_class=target_class, alpha=alpha)
         
         elif poison_type == 'adaptive_blend':
             from poison_tool_box import adaptive_blend
             poison_transform = adaptive_blend.poison_transform(img_size=img_size, trigger=trigger,
                                                                target_class=target_class, alpha=alpha)
         
+        elif poison_type == 'adaptive_patch':
+            from poison_tool_box import adaptive_patch
+            poison_transform = adaptive_patch.poison_transform(img_size=img_size, test_trigger_names=config.adaptive_patch_test_trigger_names[args.dataset], test_alphas=config.adaptive_patch_test_trigger_alphas[args.dataset], target_class=target_class, denormalizer=denormalizer, normalizer=normalizer,)
+
         elif poison_type == 'adaptive_k_way':
             from poison_tool_box import adaptive_k_way
             poison_transform = adaptive_k_way.poison_transform(img_size=img_size, target_class=target_class, denormalizer=denormalizer, normalizer=normalizer,)
-        
-        elif poison_type == 'adaptive_k':
-            from poison_tool_box import adaptive_k
-            poison_transform = adaptive_k.poison_transform(img_size=img_size, target_class=target_class, denormalizer=denormalizer, normalizer=normalizer,)
-        
-        elif poison_type == 'universal':
-            from poison_tool_box import universal
-            poison_transform = universal.poison_transform(img_size=img_size, trigger=trigger,
-                                                          target_class=target_class)
-
-        elif poison_type == 'SIG':
-
-            from poison_tool_box import SIG
-            poison_transform = SIG.poison_transform(img_size=img_size, denormalizer=denormalizer, normalizer=normalizer,
-                                                    target_class=target_class, delta=30/255, f=6, has_normalized=is_normalized_input)
-
-        elif poison_type == 'TaCT':
-            from poison_tool_box import TaCT
-            poison_transform = TaCT.poison_transform(img_size=img_size, trigger=trigger, mask = trigger_mask,
-                                                     target_class=target_class)
-
-        elif poison_type == 'sleeper_agent':
-
-            if args is None:
-                raise Exception('sleeper_agent need args to read metadata.')
-            poison_set_dir = get_poison_set_dir(args)
-            meta_info = torch.load(os.path.join(poison_set_dir, 'meta_info'))
-            target_class = meta_info['target_class']
-
-            from poison_tool_box import sleeper_agent
-            poison_transform = sleeper_agent.poison_transform(img_size=img_size, trigger=trigger,target_class=target_class)
 
         else: # 'none'
             from poison_tool_box import none
             poison_transform = none.poison_transform()
 
-        return poison_transform
-
-
-    elif poison_type == 'dynamic':
-
-        if dataset_name == 'cifar10':
-            channel_init = 32
-            steps = 3
-            input_channel = 3
-            ckpt_path = './models/all2one_cifar10_ckpt.pth.tar'
-
-            require_normalization = True
-
-        elif dataset_name == 'gtsrb':
-            # the situation for gtsrb is inverese
-            # the original implementation of generator does not require normalization
-            channel_init = 32
-            steps = 3
-            input_channel = 3
-            ckpt_path = './models/all2one_gtsrb_ckpt.pth.tar'
-
-            require_normalization = False
-
-        else:
-            raise Exception("Invalid Dataset")
-
-
-        if not os.path.exists(ckpt_path):
-            raise NotImplementedError(
-                '[Dynamic Attack] Download pretrained generator first : https://github.com/VinAIResearch/input-aware-backdoor-attack-release')
-
-        from poison_tool_box import dynamic
-        poison_transform = dynamic.poison_transform(ckpt_path=ckpt_path, channel_init=channel_init, steps=steps,
-                                                    input_channel=input_channel, normalizer=normalizer,
-                                                    denormalizer=denormalizer,target_class=target_class,
-                                                    has_normalized=is_normalized_input, require_normalization = require_normalization)
         return poison_transform
 
 

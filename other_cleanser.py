@@ -230,9 +230,6 @@ for (vid, path) in enumerate(model_list):
             suspect_target_class = scores.argmax(dim=0) # class with the highest score is suspected as the target class
             suspicious_indices = suspicious_indices[suspect_target_class]
             # suspicious_indices = torch.cat(suspicious_indices, dim=0)
-        elif args.cleanser == 'CT':
-            from other_cleansers import CT_feature_inference
-            suspicious_indices = CT_feature_inference.cleanser(poisoned_set, clean_set, model, num_classes)
         elif args.cleanser == 'Strip':
             from other_cleansers import strip
             suspicious_indices = strip.cleanser(poisoned_set, clean_set, model, args)
