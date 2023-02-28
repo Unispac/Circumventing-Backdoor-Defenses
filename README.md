@@ -1,4 +1,4 @@
-# Circumventing Backdoor Defenses That Are Based on Latent Separability
+# Revisiting the Assumption of Latent Separability for Backdoor Defenses
 
 Official repostory for [Revisiting the Assumption of Latent Separability for Backdoor Defenses](https://openreview.net/forum?id=_wSHsgrVali) (ICLR 2023).
 
